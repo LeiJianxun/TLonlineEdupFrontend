@@ -1,36 +1,45 @@
 <template>
   <div class="main_login">
     <div class="welcome_content">欢迎登录TL在线教育平台</div>
-    <a-form :model="formState" name="normal_login" class="login-form" @finish="onFinish"
-            @finishFailed="onFinishFailed" style="margin-top: 15%;">
+    <a-form
+      :model="formState"
+      name="normal_login"
+      class="login-form"
+      @finish="onFinish"
+      @finishFailed="onFinishFailed"
+      style="margin-top: 15%;"
+    >
       <a-form-item name="username" :rules="[{ required: true, message: '请输入用户名!' }]">
-        <a-input v-model:value="formState.username" style="height: 6vh; width: 18vw;" placeholder="用户名">
-        </a-input>
+        <a-input
+          v-model:value="formState.username"
+          style="height: 6vh; width: 18vw;"
+          placeholder="用户名"
+        ></a-input>
       </a-form-item>
 
       <a-form-item name="password" :rules="[{ required: true, message: '请输入密码!' }]">
-        <a-input-password v-model:value="formState.password" style="height: 6vh; width: 18vw;" placeholder="密码">
-        </a-input-password>
+        <a-input-password
+          v-model:value="formState.password"
+          style="height: 6vh; width: 18vw;"
+          placeholder="密码"
+        ></a-input-password>
       </a-form-item>
 
-      <a-form-item name="code">
-        <div class="IdCode">
-          <a-input v-model:value="sidentifyMode" placeholder="验证码" class="IdInput"/>
-
-          <div class="code" @click="refreshCode">
-            <Identify :identifyCode="identifyCode"></Identify>
-          </div>
-        </div>
-
+      <a-form-item name="captcha">
+        <ServerCaptcha ref="captchaRef" />
       </a-form-item>
 
       <a-form-item style="text-align: center">
-        <a-button :disabled="disabled" type="primary" html-type="submit" class="login-form-button" @click="login">
-          登录
-        </a-button>
-        或
+        <a-button
+          :disabled="disabled"
+          :loading="loginLoading"
+          type="primary"
+          html-type="submit"
+          class="login-form-button"
+          @click="login"
+        >登录</a-button>或
         <a @click="changeToRegister">注册</a>
-        <br>
+        <br />
         <a @click="changeToResetPassword">忘记密码</a>了？
       </a-form-item>
     </a-form>
@@ -38,94 +47,70 @@
 </template>
 
 <script setup>
-import {
-  reactive,
-  computed,
-
-} from 'vue';
-import Identify from "./Identify.vue"
-import {
-  ElMessage
-} from 'element-plus'
-import {
-  ref,
-  onMounted
-} from 'vue'
-import axios from 'axios';
-import router from '@/router';
+import { reactive, computed } from "vue";
+import { ref, onMounted } from "vue";
+import axios from "axios";
+import router from "@/router";
+import { message } from "ant-design-vue";
+import ServerCaptcha from "./ImageCaptcha.vue";
 
 const emit = defineEmits(["toRegister"]);
-
-let sidentifyMode = ref('') //输入框验证码
-let identifyCode = ref('') //图形验证码
-let identifyCodes = ref('1234567890abcdefjhijklinopqrsduvwxyz') //验证码出现的数字和字母
-
-//组件挂载
-onMounted(() => {
-  identifyCode.value = ''
-  makeCode(identifyCodes.value, 4)
-})
-
-// 生成随机数
-const randomNum = (min, max) => {
-  max = max + 1
-  return Math.floor(Math.random() * (max - min) + min)
-}
-// 随机生成验证码字符串
-const makeCode = (o, l) => {
-  for (let i = 0; i < l; i++) {
-    identifyCode.value += o[randomNum(0, o.length)]
-  }
-}
-// 更新验证码
-const refreshCode = () => {
-  identifyCode.value = ''
-  makeCode(identifyCodes.value, 4)
-}
+const captchaRef = ref();
+const loginLoading = ref(false);
 
 const formState = reactive({
-  username: '',
-  password: '',
-  remember: true,
+  username: "",
+  password: "",
+  remember: true
 });
 const onFinish = values => {
-  console.log('Success:', values);
+  console.log("Success:", values);
 };
 const onFinishFailed = errorInfo => {
-  console.log('Failed:', errorInfo);
+  console.log("Failed:", errorInfo);
 };
 const disabled = computed(() => {
   return !(formState.username && formState.password);
 });
 
 axios.defaults.withCredentials = true;
-const login = async ()=>{
+const login = async () => {
+  if (!formState.username || !formState.password) {
+    message.warning("请填写完整信息");
+    return;
+  }
+
+  if (!captchaRef.value.captchaCode) {
+    message.warning("请输入验证码");
+    return;
+  }
+
+  loginLoading.value = true;
   try {
-    if (sidentifyMode.value === identifyCode.value){
-      const params = new URLSearchParams(); // 构建 URL 参数
-      params.append('phone', formState.username)
-      params.append('password', formState.password)
+    const params = new URLSearchParams();
+    params.append("phone", formState.username);
+    params.append("password", formState.password);
+    params.append("captchaId", captchaRef.value.captchaId);
+    params.append("captchaCode", captchaRef.value.captchaCode);
 
-      const result = await axios.post('/api/login', params.toString());
+    const result = await axios.post("/api/login", params.toString());
 
-      if (result.status === 200){
-        localStorage.setItem("loginData", JSON.stringify(result.data));
-        router.push({ path: "/", }).then(() => {
-          window.location.reload()
-        });
-      }
-    }else {
-      alert("验证码有误！")
+    // 登录成功
+    if (result.status === 200) {
+      localStorage.setItem("loginData", JSON.stringify(result.data));
+      message.success("登录成功！");
+      router.push({ path: "/" }).then(() => {
+        window.location.reload();
+      });
     }
-
-  }catch (e){
+  } catch (e) {
     if (e.code === "ERR_BAD_REQUEST") {
-      alert("系统安全升级，请先重置密码")
+      alert("系统安全升级，请先重置密码");
     } else {
-      alert("用户名或密码错误！")
+      alert("用户名或密码错误！");
     }
   }
-}
+};
 
 // 跳转到注册页面
 const changeToRegister = () => {
