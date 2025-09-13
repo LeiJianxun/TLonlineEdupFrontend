@@ -33,13 +33,8 @@
 				<a-form-item required name="date1">
 					<a-date-picker v-model:value="formState.date1" type="date" placeholder="出生年月" style="float: left;"/>
 				</a-form-item>
-				<a-form-item name="code" :rules="[{ required: true, message: '请输入验证码!' }]">
-					<div class="IdCode">
-						<a-input v-model:value="formState.code" placeholder="验证码" class="IdInput" />
-						<div class="code" @click="refreshCode">
-							<Identify :identifyCode="identifyCode"></Identify>
-						</div>
-					</div>
+				<a-form-item name="code">
+					<ServerCaptcha ref="captchaRef" />
 				</a-form-item>
 				<a-form-item>
 					<a-button type="primary" @click="onSubmit">创建</a-button>
@@ -58,13 +53,12 @@ import {
   onMounted,
   toRaw,
 } from 'vue';
-import {
-  ElMessage,
-} from 'element-plus';
-import Identify from './Identify.vue';
 import axios from 'axios';
 import router from '@/router';
+import ServerCaptcha from "./ImageCaptcha.vue";
+import { message } from 'ant-design-vue';
 
+const captchaRef = ref();
 const formRef = ref();
 const ascription = ref([]);
 const visible = ref(false);
@@ -129,20 +123,22 @@ const onSubmit = () => {
           phone:formState.phone,
           password:formState.password,
           identifiers:formState.region,
-          birthday: formState.date1
+          birthday: formState.date1,
+          captchaId: captchaRef.value.captchaId,
+          captchaCode: captchaRef.value.captchaCode
         }).then((result)=>{
           if (result.data === "注册成功"){
-            alert("注册成功！")
+            message.success("注册成功！")
             backLogin();
           }
         })
       }else{
-        alert("请检查两次输入密码是否一致！")
+        message.warning("请检查两次输入密码是否一致！")
       }
 
     })
     .catch((error) => {
-      console.log('error', error);
+      message.error('注册失败：', error);
     });
 };
 
@@ -154,7 +150,7 @@ const loadAscription = async () =>{
       ascription.value = response.data.content;
     }
   }catch (err){
-    console.log(err)
+    message.error("部门信息获取失败：",err)
   }
 
 }
@@ -166,33 +162,10 @@ const resetForm = () => {
 // 定义可发射的事件
 const emit = defineEmits(['backLogin']);
 
-const sidentifyMode = ref(''); // 输入框验证码
-const identifyCode = ref(''); // 图形验证码
-const identifyCodes = ref('1234567890abcdefjhijklinopqrsduvwxyz'); // 验证码出现的数字和字母
-
 // 组件挂载
 onMounted(() => {
-  identifyCode.value = '';
-  makeCode(identifyCodes.value, 4);
   loadAscription();
 });
-
-// 生成随机数
-const randomNum = (min, max) => {
-  max += 1;
-  return Math.floor(Math.random() * (max - min) + min);
-};
-// 随机生成验证码字符串
-const makeCode = (o, l) => {
-  for (let i = 0; i < l; i++) {
-    identifyCode.value += o[randomNum(0, o.length)];
-  }
-};
-// 更新验证码
-const refreshCode = () => {
-  identifyCode.value = '';
-  makeCode(identifyCodes.value, 4);
-};
 
 const onFinish = (values) => {
   console.log('Success:', values);

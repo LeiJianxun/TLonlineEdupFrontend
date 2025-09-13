@@ -19,13 +19,8 @@
                 <a-form-item ref="newPassword2" name="newPassword2">
 					<a-input-password v-model:value="formState.newPassword2" placeholder="请二次确认新密码" />
 				</a-form-item>
-				<a-form-item name="code" :rules="[{ required: true, message: '请输入验证码!' }]">
-					<div class="IdCode">
-						<a-input v-model:value="formState.code" placeholder="验证码" class="IdInput" />
-						<div class="code" @click="refreshCode">
-							<Identify :identifyCode="identifyCode"></Identify>
-						</div>
-					</div>
+				<a-form-item name="code">
+					<ServerCaptcha ref="captchaRef" />
 				</a-form-item>
 				<a-form-item>
 					<a-button type="primary" @click="onSubmit">确认</a-button>
@@ -44,11 +39,11 @@ import {
   onMounted,
   toRaw,
 } from 'vue';
-import { message } from 'ant-design-vue';
-import Identify from './Identify.vue';
 import axios from 'axios';
 import router from '@/router';
+import ServerCaptcha from "./ImageCaptcha.vue";
 
+const captchaRef = ref();
 const formRef = ref();
 const ascription = ref([]);
 const labelCol = {
@@ -92,6 +87,8 @@ const onSubmit = () => {
           phone:formState.phone,
           oldPassword:formState.oldPassword,
           newPassword:formState.newPassword,
+          captchaId: captchaRef.value.captchaId,
+          captchaCode: captchaRef.value.captchaCode
         }).then((result)=>{
           if (result.data === "密码重置成功"){
             message.success("密码重置成功！请重新登录~")
@@ -117,32 +114,9 @@ const resetForm = () => {
 // 定义可发射的事件
 const emit = defineEmits(['backLogin']);
 
-const sidentifyMode = ref(''); // 输入框验证码
-const identifyCode = ref(''); // 图形验证码
-const identifyCodes = ref('1234567890abcdefjhijklinopqrsduvwxyz'); // 验证码出现的数字和字母
-
 // 组件挂载
 onMounted(() => {
-  identifyCode.value = '';
-  makeCode(identifyCodes.value, 4);
 });
-
-// 生成随机数
-const randomNum = (min, max) => {
-  max += 1;
-  return Math.floor(Math.random() * (max - min) + min);
-};
-// 随机生成验证码字符串
-const makeCode = (o, l) => {
-  for (let i = 0; i < l; i++) {
-    identifyCode.value += o[randomNum(0, o.length)];
-  }
-};
-// 更新验证码
-const refreshCode = () => {
-  identifyCode.value = '';
-  makeCode(identifyCodes.value, 4);
-};
 
 const onFinish = (values) => {
   console.log('Success:', values);

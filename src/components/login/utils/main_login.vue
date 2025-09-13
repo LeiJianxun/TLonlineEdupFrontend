@@ -105,9 +105,9 @@ const login = async () => {
     }
   } catch (e) {
     if (e.code === "ERR_BAD_REQUEST") {
-      alert("系统安全升级，请先重置密码");
+      message.warning("系统安全升级，请先重置密码");
     } else {
-      alert("用户名或密码错误！");
+      message.error("用户名或密码错误！");
     }
   }
 };
@@ -170,20 +170,6 @@ const changeToResetPassword = () => {
   .IdInput {
     width: 40%;
     margin-right: 10%;
-  }
-}
-
-.identify {
-  display: flex;
-  align-items: center;
-
-  a-input {
-    flex: 0 0 48%;
-    margin-right: 4%;
-  }
-
-  Identify {
-    flex: 0 0 48%;
   }
 }
 </style>
